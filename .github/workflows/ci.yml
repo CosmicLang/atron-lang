@@ -80,6 +80,15 @@ jobs:
         run: go vet ./...
 
       - name: Test with race detector
+        # bash on every runner: the Windows default shell is pwsh, which
+        # re-tokenised this command and turned the coverage filename into a
+        # spurious '.out' package argument, so 'go test' aborted with
+        # '# .out: no required module provides package .out' before running a
+        # single test. The tests themselves passed on that same run (94.3%).
+        # bash is already used by the neighbouring steps and behaves
+        # identically on all three platforms, so the invocation no longer
+        # depends on which shell a matrix row happens to select.
+        shell: bash
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Report coverage
