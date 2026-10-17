@@ -1,0 +1,191 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Continuous integration for the Atron project, based on chapter 6.4 of the
+# Atron Master Implementation Guide.
+#
+# Scope: Linux, macOS and Windows, each against the minimum supported Go
+# (1.23.x) and the current stable Go. The workflow covers formatting, vet, race
+# tests with coverage, linting, vulnerability scanning, a minimum-supported-Go
+# build, and a DCO sign-off check on pull requests.
+#
+# Action versions were verified against the GitHub API on 2026-10-17:
+#   actions/checkout            v7.0.1  -> v7
+#   actions/setup-go            v7.0.0  -> v7
+#   golangci/golangci-lint-action v9.3.0 -> v9
+# Pinning is by major tag, as recommended by GitHub for first-party actions.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    name: test (${{ matrix.os }} / go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ['1.23.x', 'stable']
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+          cache: true
+
+      - name: Show toolchain versions
+        run: |
+          go version
+          go env GOOS GOARCH GOTOOLCHAIN
+
+      - name: Verify gofmt
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::the following files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+          echo "gofmt: clean"
+
+      - name: Verify go.mod is tidy
+        shell: bash
+        run: |
+          if ! go mod tidy -diff; then
+            echo "::error::go.mod/go.sum are not tidy; run 'go mod tidy' and commit the result"
+            exit 1
+          fi
+          echo "go.mod: tidy"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test with race detector
+        # bash on every runner: the Windows default shell is pwsh, which
+        # re-tokenised this command and turned the coverage filename into a
+        # spurious '.out' package argument, so 'go test' aborted with
+        # '# .out: no required module provides package .out' before running a
+        # single test. The tests themselves passed on that same run (94.3%).
+        # bash is already used by the neighbouring steps and behaves
+        # identically on all three platforms, so the invocation no longer
+        # depends on which shell a matrix row happens to select.
+        shell: bash
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Report coverage
+        shell: bash
+        run: go tool cover -func=coverage.out | tail -n 1
+
+      - name: Build the atron binary with injected metadata
+        shell: bash
+        run: |
+          go build -trimpath \
+            -ldflags "-X 'main.version=ci' \
+                      -X 'main.commit=${GITHUB_SHA}' \
+                      -X 'main.date=1970-01-01T00:00:00Z'" \
+            -o "$RUNNER_TEMP/atron$(go env GOEXE)" ./cmd/atron
+
+      - name: Smoke test the CLI
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/atron$(go env GOEXE)" version
+          "$RUNNER_TEMP/atron$(go env GOEXE)" help >/dev/null
+
+          # Chapter 4.8 fixes the exit codes: 0 success, 64 incorrect CLI usage.
+          status=0
+          "$RUNNER_TEMP/atron$(go env GOEXE)" bogus 2>/dev/null || status=$?
+          if [ "$status" -ne 64 ]; then
+            echo "::error::unknown command must exit 64, got $status"
+            exit 1
+          fi
+
+          status=0
+          "$RUNNER_TEMP/atron$(go env GOEXE)" version extra 2>/dev/null || status=$?
+          if [ "$status" -ne 64 ]; then
+            echo "::error::unexpected argument must exit 64, got $status"
+            exit 1
+          fi
+
+          echo "cli smoke test: ok (usage errors exit 64)"
+
+  lint:
+    name: lint (ubuntu-latest / go stable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          check-latest: true
+          cache: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+
+  vuln:
+    name: vulnerability check (ubuntu-latest / go stable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+          check-latest: true
+          cache: true
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  dco:
+    name: dco sign-off (pull requests)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify Signed-off-by trailers
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          while read -r sha; do
+            [ -z "$sha" ] && continue
+            subject="$(git log -1 --format=%s "$sha")"
+            if ! git log -1 --format=%B "$sha" | grep -qE '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::commit $sha ('$subject') is missing a Signed-off-by trailer"
+              status=1
+            fi
+          done < <(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA")
+          exit "$status"

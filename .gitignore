@@ -1,4 +1,10 @@
-# Binários e artefatos de build
+# Build outputs
+/bin/
+/dist/
+/build/
+/coverage/
+
+# Go binaries and test artifacts
 *.exe
 *.exe~
 *.dll
@@ -8,21 +14,28 @@
 *.out
 *.prof
 
-/bin/
-/dist/
-/build/
-/coverage/
-
-# Testes e coverage
+# Coverage reports
 *.html
 
-# IDE / Editores
-.vscode/
+# IDE and editor state
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
 
-# Sistema Operacional
+# Compiler output produced by `go build` in the repository root
+/atron
+
+# OS metadata
 .DS_Store
 Thumbs.db
+
+# Authoritative implementation reference, kept locally and intentionally not
+# versioned. It is the source of truth for the specification, but it is a local
+# copy: see docs/PROGRESS.md for its identity, hash and role. Never commit it.
+/Atron_Guia_Mestre_Implementacao_IA.pdf
+
+# Local overrides and scratch files
+*.local
+/.env

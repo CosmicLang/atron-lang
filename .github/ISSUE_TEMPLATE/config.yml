@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Links shown on the "new issue" chooser page. Blank issues stay enabled so that
+# anything not covered by a template can still be reported.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/CosmicLang/atron-lang/blob/main/SECURITY.md
+    about: Do not report security issues publicly. Read SECURITY.md for the reporting policy.
+  - name: Question or discussion
+    url: https://github.com/CosmicLang/atron-lang/issues/new?template=question.md
+    about: Ask a usage or design question using the question template.

@@ -1,0 +1,37 @@
+Atron
+=====
+
+Copyright 2026 The Atron Authors
+
+This product is licensed under the Apache License, Version 2.0 (see the LICENSE
+file in this repository).
+
+
+Third-party components
+----------------------
+
+Milestone M0 contains no third-party code. The language core, the command-line
+tool, the tests and the build tooling depend only on the Go standard library.
+
+Development-only tooling is not distributed with Atron and is therefore not
+listed as a bundled component:
+
+  * golangci-lint (GPL-3.0) - invoked as a separate executable by `make lint`
+    and by CI. It is not linked into, or vendored within, any Atron artifact.
+  * govulncheck (BSD-3-Clause) - run by CI as a separate executable.
+
+Any future dependency that is compiled into an Atron binary or redistributed in
+a release archive must be added to this file, together with its copyright notice
+and license text, before the release is published.
+
+
+Documentation
+-------------
+
+The Community Impact Guidelines in CODE_OF_CONDUCT.md are adapted from the
+Contributor Covenant, version 2.1, available at
+https://www.contributor-covenant.org/version/2/1/code_of_conduct.html, which is
+licensed under CC BY 4.0.
+
+The DCO text quoted in CONTRIBUTING.md is the Developer Certificate of Origin,
+version 1.1, available at https://developercertificate.org/.
