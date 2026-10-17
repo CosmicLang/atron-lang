@@ -114,12 +114,13 @@ and must not be conflated:
 | Item | Status | Detail |
 |---|---|---|
 | Moderation contact in `CODE_OF_CONDUCT.md` | **Resolved (M0-R2)** | The Enforcement section publishes a working contact address. An earlier revision of this ADR said the file was incomplete "until a contact address exists"; that statement is obsolete and has been removed. Nothing about the Code of Conduct blocks publication. |
-| Private vulnerability reporting (PVR) | **Outstanding, and unrelated to name clearance** | `GET /repos/CosmicLang/atron-lang/private-vulnerability-reporting` returns `{"enabled": false}`; re-checked on 2026-10-17. `SECURITY.md` therefore describes the intended process and states the disabled status plainly rather than claiming a live channel. Enabling it needs the repository *Admin* role, so it is a settings action, not a documentation fix. |
+| Private vulnerability reporting (PVR) | **Resolved (M0-R6)** | `GET /repos/CosmicLang/atron-lang/private-vulnerability-reporting` returns `{"enabled": true}` with HTTP 200; re-verified on 2026-10-17. `SECURITY.md` describes the operational private channel. Activation required the repository *Admin* role, so it was a settings action by the maintainer, not a documentation change. |
 
-Name and extension clearance neither depends on nor unblocks PVR: the former is
-a naming question, the latter is a security-channel configuration. The project
-remains *not cleared for public distribution* on the strength of step 3 alone,
-not because of either of these rows.
+Name and extension clearance neither depends on nor unblocks the code-of-conduct
+contact or PVR: the first is a naming question, the others are published-contact
+and security-channel configurations. The project remains *not cleared for public
+distribution* on the strength of step 3 alone, not because of either of these
+rows.
 
 Until step 3 is performed and step 4 is recorded, this ADR is *accepted for
 development, not cleared for public distribution*. `GOVERNANCE.md` states the

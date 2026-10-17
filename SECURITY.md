@@ -22,31 +22,26 @@ ship a fix before the details are widely known.
 
 Atron uses **coordinated disclosure through GitHub Private Vulnerability
 Reporting (PVR)**. PVR is the project's only accepted private vulnerability
-channel. It is a repository security feature, and it must be enabled by a
-maintainer before it can accept reports.
+channel.
 
 ### Activation status
 
-**PVR is not enabled for `CosmicLang/atron-lang` at the time of writing.** The
-repository API reports `{"enabled": false}` for
-`repos/CosmicLang/atron-lang/private-vulnerability-reporting`. This section
-therefore describes the intended process, not a channel that is currently
-operational. Do not treat this document as evidence that a report can be filed
-privately today.
+**PVR is enabled for `CosmicLang/atron-lang`.** The repository API reports
+`{"enabled": true}` for
+`repos/CosmicLang/atron-lang/private-vulnerability-reporting`, and the endpoint
+returns HTTP 200. The channel is operational: a report filed through it creates
+a private draft security advisory visible only to the reporter and the
+maintainers.
 
-Enabling PVR is a pending prerequisite tracked in `docs/PROGRESS.md`. It
-requires the *Admin* role on the repository and cannot be performed from a
-commit; it is a settings change, not a documentation change.
+### Submitting a report
 
-### Submitting a report once PVR is active
-
-When a maintainer has enabled *Private vulnerability reporting*, the
-**Security** tab of the repository shows a **Report a vulnerability** button
+The **Security** tab of the repository shows a **Report a vulnerability** button
 that opens the GitHub Security Advisory draft form. Reports are visible only to
 you and the repository maintainers until an advisory is published.
 
-1. Open `https://github.com/CosmicLang/atron-lang/security/advisories/new`.
-   Before activation this URL cannot accept submissions.
+1. Open `https://github.com/CosmicLang/atron-lang/security/advisories/new`, or
+   use the **Report a vulnerability** button on the repository's **Security**
+   tab.
 2. Give the advisory a concise title and fill in the affected ecosystem and
    package (`golang`, `github.com/CosmicLang/atron-lang`).
 3. Describe the issue using the fields listed below.
@@ -62,8 +57,8 @@ Please include:
 
 ## What to expect
 
-The following are targets, not guarantees. They begin once PVR is enabled, which
-is the precondition for any report to arrive privately at all:
+The following are targets, not guarantees, and they apply from the moment a
+report arrives through PVR:
 
 | Stage | Target |
 |---|---|

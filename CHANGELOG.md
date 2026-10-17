@@ -43,11 +43,12 @@ Milestone M0 is complete but not yet approved, so its changes remain unreleased.
 
 ### Changed
 
-- `SECURITY.md` now names GitHub Private Vulnerability Reporting (PVR) as the
+- `SECURITY.md` names GitHub Private Vulnerability Reporting (PVR) as the
   project's only private vulnerability channel and documents the submission flow
-  through GitHub Security Advisories. PVR is **not enabled** on the repository,
-  and the document states that plainly instead of implying a working channel. The
-  code-of-conduct address is deliberately not offered as a security contact.
+  through GitHub Security Advisories. PVR **is enabled** on the repository
+  (`{"enabled": true}`, verified 2026-10-17), so the documented flow is the
+  operational one. The code-of-conduct address is deliberately not offered as a
+  security contact.
 - `CODE_OF_CONDUCT.md` publishes the enforcement contact, replacing the previous
   placeholder, and adds explicit confidentiality commitments and a
   conflict-of-interest path. The Contributor Covenant 2.1 text and the
