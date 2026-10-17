@@ -4,11 +4,13 @@ Atron is an original, open-source programming language implemented in Go. It is
 dynamically and strongly typed, its sources use the `.atrn` extension, and its
 toolchain ships as a single `atron` binary.
 
-**Status: milestone M0 — repository foundation.** There is no language
-implementation yet. The repository currently contains the Go module, package
+**Status: milestone M0 — repository foundation, formally accepted.** There is no
+language implementation yet. The repository contains the Go module, package
 scaffolding, the `atron` command with `version` and `help`, tests, build tooling,
-CI configuration and project documentation. Nothing in this repository can
-compile or execute an `.atrn` program, and no such claim is made anywhere below.
+CI configuration and project documentation. Nothing here can compile or execute
+an `.atrn` program, and no such claim is made below. The syntax and execution
+contract for the 0.1 design is **ratified** in [`docs/spec/`](docs/spec/); M1
+(lexer) has **not** started and is not authorised.
 
 ---
 
@@ -36,7 +38,8 @@ them is implemented yet beyond package scaffolding.
 | `atron help`, usage text, invalid-command handling | Implemented and tested |
 | Package layout, `doc.go` scaffolding, SPDX headers | Implemented |
 | Build tooling, linting, CI, project docs, ADRs | Implemented |
-| Lexer, tokens | Planned — milestone M1 |
+| Language spec: lexical and grammar chapters | Ratified — not implemented |
+| Lexer, tokens | Planned — milestone M1, **not authorised** |
 | AST, parser | Planned — milestone M2 |
 | Semantic analysis (resolver) | Planned — milestone M3 |
 | Runtime values, bytecode, compiler, VM | Planned — milestone M4 |
@@ -47,9 +50,15 @@ them is implemented yet beyond package scaffolding.
 | Performance work | Planned — milestone M9 |
 | 0.1.0 release | Planned — milestone M10 |
 
-The authoritative source of truth for language syntax and semantics is the Atron
-Master Implementation Guide v1.0 (17 October 2026). Its summary will be
-published under `docs/spec/` as the language takes shape.
+The authoritative baseline for language syntax and semantics is the Atron Master
+Implementation Guide v1.0 (17 October 2026), which is not version-controlled. The
+**normative, tracked** contract is [`docs/spec/`](docs/spec/): [`lexical.md`](docs/spec/lexical.md)
+and [`grammar.md`](docs/spec/grammar.md) are ratified and take precedence over the
+guide where they differ. Two decisions deviate from the guide and are recorded as
+ADRs — [`0004`](docs/decisions/0004-const-declarations.md) (`const` replaces
+`let`) and [`0005`](docs/decisions/0005-explicit-entrypoint.md) (an explicit
+`fn main()` is required in executable roots) — with their public record in
+[issue #3](https://github.com/CosmicLang/atron-lang/issues/3).
 
 ## Installation
 
@@ -118,7 +127,9 @@ intended syntax of the language and **cannot be executed by this repository
 today**:
 
 ```atron
-println("Hello, world!")
+fn main() {
+    println("Hello, world!")
+}
 ```
 
 ## Building and testing
@@ -187,6 +198,8 @@ only public Go API and will follow strict semantic compatibility from 1.0.
 
 - [`docs/PROGRESS.md`](docs/PROGRESS.md) — current milestone, completed work,
   pending items and verification evidence.
+- [`docs/spec/`](docs/spec/) — the normative language specification. The lexical
+  and grammar chapters are ratified; nothing they describe is implemented.
 - [`docs/decisions/`](docs/decisions/) — architecture decision records.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — build, test, commit and proposal
   process.
