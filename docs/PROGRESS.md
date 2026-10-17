@@ -1,12 +1,16 @@
 # Atron project progress
 
-Current milestone: **M0 — repository foundation**
+Current milestone: **M1 — lexer (not started, not authorized)**
 Last updated: 2026-10-17
+
+M0 — repository foundation is **formally accepted** by the maintainer on
+2026-10-17. The permanent record is
+[`docs/audits/m0-acceptance.md`](audits/m0-acceptance.md).
 
 | Milestone | State | Notes |
 |---|---|---|
-| M0 — repository foundation | complete, awaiting maintainer approval | Local gates green; exit codes corrected to §4.8; PDF excluded; published as draft PR #1; CI green on all six matrix legs against `1ea265e`. See “Verification”, “M0 acceptance criteria” and “Known gaps”. |
-| M1 — lexer | not started | Must not begin before M0 is approved. |
+| M0 — repository foundation | **formally accepted — technically complete (2026-10-17)** | Merged to `main` by PR #1 (merge commit `78a1911`); post-merge CI green on all six platform/Go legs plus lint and vulnerability check. See [acceptance record](audits/m0-acceptance.md), “Verification”, “M0 acceptance criteria” and “Known gaps”. |
+| M1 — lexer | **not started — implementation not authorized** | Acceptance of M0 is not authorization to begin M1. |
 | M2 — AST and parser | not started | |
 | M3 — resolver | not started | |
 | M4 — values, bytecode, compiler, VM | not started | Runs the ADR-0001 benchmark validation. |
@@ -86,6 +90,34 @@ git check-ignore -v Atron_Guia_Mestre_Implementacao_IA.pdf
 git status --porcelain | grep -i '\.pdf$'   # must print nothing
 ```
 
+## Formal acceptance (M0-R9)
+
+The maintainer declared **M0 — Repository Foundation formally accepted as
+technically complete on 2026-10-17**. The permanent governance record is
+[`docs/audits/m0-acceptance.md`](audits/m0-acceptance.md).
+
+| Item | Value |
+|---|---|
+| Original pull request | #1, **MERGED** by the maintainer |
+| PR head that was merged | `25c2b727aadb47d64763f4f54e267700fe5bf93d` |
+| Merge commit (current `main`) | `78a19110b273d0623fb34a4fec293c54627963ee` |
+| Merge strategy | merge commit, two parents: `40e612d` (base) and `25c2b72` (head) |
+| Post-merge workflow | [39076322979](https://github.com/CosmicLang/atron-lang/actions/runs/39076322979) — `push`, **SUCCESS** |
+| Test matrix | 6/6 — Ubuntu, macOS, Windows × Go 1.23.x and Go stable |
+| Post-merge lint and vulnerability check | both successful |
+| Pre-merge DCO verification | successful on PR #1, run [39076059769](https://github.com/CosmicLang/atron-lang/actions/runs/39076059769) |
+| Security policy | approved Atron `SECURITY.md` preserved, blob `57d0266` |
+| Private vulnerability reporting | enabled — `GET /repos/CosmicLang/atron-lang/private-vulnerability-reporting` returns `{"enabled": true}` |
+| Release published | **none** — no tag, no release |
+| M1 implementation | **not started, not authorized** |
+
+The DCO job is skipped in the post-merge `push` run because it is conditioned on
+`github.event_name == 'pull_request'`. That is intentional and is not a failed
+acceptance criterion; DCO was verified on the pull request itself.
+
+Acceptance covers the technical milestone only. It does not establish trademark
+clearance, release readiness, or permission to begin M1.
+
 ## M0 deliverables
 
 Definition from chapter 7 of the Atron Master Implementation Guide, with status:
@@ -113,7 +145,7 @@ Definition from chapter 7 of the Atron Master Implementation Guide, with status:
 |---|---|---|
 | `make test` green | Met locally | `go test -race -count=1 ./...` → `ok github.com/CosmicLang/atron-lang/cmd/atron` |
 | `make lint` green | Met locally | `golangci-lint run` → `0 issues.` |
-| CI green on three platforms | **Met** | Run [39074333212](https://github.com/CosmicLang/atron-lang/actions/runs/39074333212) on `1ea265e`, triggered by pull request: `test` green on ubuntu-latest, macos-latest and windows-latest, each against Go 1.23.12 and Go 1.27.2 (six of six matrix legs). Each leg ran gofmt, `go mod tidy -diff`, vet, race tests with coverage (94.3%), a metadata-injected build and the exit-64 CLI smoke test; no step was skipped. `lint`, `vulnerability check` and `dco sign-off` also green in the same run. Earlier runs failed on Windows and their defects are fixed and recorded. Because a documentation commit moved the branch head after this run, the authoritative status for the current head is always the live check list on [PR #1](https://github.com/CosmicLang/atron-lang/pull/1/checks), not any SHA quoted in this file. |
+| CI green on three platforms | **Met — verified post-merge** | Post-merge `push` run [39076322979](https://github.com/CosmicLang/atron-lang/actions/runs/39076322979) on merge commit `78a1911`: `test` green on ubuntu-latest, macos-latest and windows-latest, each against Go 1.23.x and the stable toolchain (six of six matrix legs), plus `lint` and `vulnerability check`; no step skipped. Each leg runs gofmt, `go mod tidy -diff`, vet, race tests with coverage (94.3%), a metadata-injected build and the exit-64 CLI smoke test. Pre-merge evidence is PR #1's final run [39076059769](https://github.com/CosmicLang/atron-lang/actions/runs/39076059769) on `25c2b72`, which also passed the PR-only `dco sign-off` job. Earlier runs failed on Windows; their defects are fixed and recorded in “Remote verification”. |
 | `atron version` shows version and commit injected by `-ldflags` | Met | See “Verification” and `TestCompiledBinaryVersionMetadata`. |
 | Every `.go` file has an SPDX header | Met | `find . -name '*.go' \| xargs grep -L 'SPDX-License-Identifier: Apache-2.0'` → no output (20 files). |
 | `go vet` clean | Met | `go vet ./...` → no output |
@@ -151,7 +183,10 @@ only on the Windows matrix legs and were fixed inside M0:
 | [39073735761](https://github.com/CosmicLang/atron-lang/actions/runs/39073735761) | `dd36dcf` | Windows failed at **Verify gofmt** on both Go versions; every later step was skipped. The repository declared no line-ending policy, so a checkout with the Git-for-Windows default `core.autocrlf=true` produced CRLF and `gofmt` rejected it. Fixed by adding `.gitattributes` with `text=auto eol=lf`. |
 | [39073871074](https://github.com/CosmicLang/atron-lang/actions/runs/39073871074) | `d3835ba` | gofmt, tidiness and vet now passed on Windows. Both legs then failed in **Test with race detector** with `# .out: no required module provides package .out`: the step was the only one in the job without an explicit shell, so the Windows default `pwsh` re-tokenised the command and the coverage filename became a package argument. The tests themselves passed at 94.3%. Fixed by pinning `shell: bash`, as the neighbouring steps already did. |
 | [39074104773](https://github.com/CosmicLang/atron-lang/actions/runs/39074104773) | `d776938` | **Green.** Six of six platform/Go legs, plus lint, vulnerability check and DCO. Every step executed; none skipped. Superseded as the head moved on. |
-| [39074333212](https://github.com/CosmicLang/atron-lang/actions/runs/39074333212) | `1ea265e` | **Green — the run cited above.** Same nine jobs, same six matrix legs, no step skipped. This is the last head SHA for which a completed run exists. |
+| [39074333212](https://github.com/CosmicLang/atron-lang/actions/runs/39074333212) | `1ea265e` | **Green.** Same nine jobs, same six matrix legs, no step skipped. At the time it was the last head SHA for which a completed run existed; the head later moved on and that result was never reused as the merge gate. |
+| [39075944371](https://github.com/CosmicLang/atron-lang/actions/runs/39075944371) | `b61f205` | **Green.** The `SECURITY.md` conflict-resolution merge commit: nine of nine jobs, no step skipped. |
+| [39076059769](https://github.com/CosmicLang/atron-lang/actions/runs/39076059769) | `25c2b72` | **Green — final pre-merge evidence.** The head that was actually merged: nine of nine jobs, six of six platform/Go legs, no step skipped. |
+| [39076322979](https://github.com/CosmicLang/atron-lang/actions/runs/39076322979) | `78a1911` | **Green — post-merge evidence on `main`.** Triggered by `push` after PR #1 merged: six of six platform/Go legs plus lint and vulnerability check. The DCO job is skipped on `push` because its workflow condition targets pull requests only. |
 
 Both defects were in the repository's configuration rather than in the Go
 sources, and neither was worked around by weakening a check: no test was
@@ -243,13 +278,13 @@ of chapter 6.3 apply to the milestones that implement them.
 
 | Item | Owner | Consequence |
 |---|---|---|
-| CI has run and is green | **Resolved (M0-R4)** | Run [39074333212](https://github.com/CosmicLang/atron-lang/actions/runs/39074333212) on `1ea265e`: six of six platform/Go legs green, plus lint, vulnerability check and DCO. The branch is published and draft PR #1 is open. `main` has since advanced from `bea08fa` to `40e612d` (see the `SECURITY.md` row below), so the PR head is measured against the current base by the live checks on PR #1. |
-| M0 work published as a draft PR | **Resolved (M0-R4)** | `phase/m0-foundation` is pushed and PR #1 targets `main` in draft state. Nothing is merged; the merge decision is the maintainer's. |
+| CI has run and is green | **Resolved (M0-R4, superseded M0-R8)** | The pre-merge `pull_request` run [39076059769](https://github.com/CosmicLang/atron-lang/actions/runs/39076059769) on `25c2b72` was the last green PR-level run: nine of nine jobs, six of six platform/Go legs, no step skipped. The authoritative result is now the post-merge `push` run [39076322979](https://github.com/CosmicLang/atron-lang/actions/runs/39076322979) on the merge commit `78a1911` — see [the acceptance record](audits/m0-acceptance.md). |
+| M0 work published as a draft PR | **Resolved (M0-R4, closed out M0-R8)** | `phase/m0-foundation` was pushed and PR #1 targeted `main` in draft state. PR #1 was marked ready and **merged** on 2026-10-17 by the maintainer as merge commit `78a1911`; the source branch was deliberately not deleted. |
 | Git identity configured | **Resolved (M0-R3)** | The maintainer supplied the author e-mail. `user.name` and `user.email` are set at repository scope only; global and system scope were left untouched, and `git commit -s` derives every trailer from that identity. |
 | The initial commit `bea08fa` uses a machine-local author address | Maintainer (optional) | It predates the confirmed identity and carries `joaotheodoro@Mac-mini-de-Joao.local`. It is pre-existing history on `main` and is deliberately not rewritten. The DCO job compares the PR range, so it is not flagged; rewriting it, if ever wanted, is a separate maintainer decision. |
 | No moderation contact in `CODE_OF_CONDUCT.md` | **Resolved (M0-R2)** | The confirmed moderation address is published in the Enforcement section. Contributor Covenant 2.1 text, confidentiality language and escalation ladder are unchanged and consistent with `GOVERNANCE.md`. |
 | Private security reporting channel active | **Resolved (M0-R6)** | PVR is enabled: `GET /repos/CosmicLang/atron-lang/private-vulnerability-reporting` returns `{"enabled": true}` with HTTP 200, re-verified on 2026-10-17. `SECURITY.md` documents the operational flow and no longer claims the channel is unavailable. Activation was a repository-settings change made by the maintainer, not a commit. |
-| `main` carries a placeholder `SECURITY.md` | **Resolved (M0-R7)** | Commit `40e612d` on `main` added GitHub's unedited starter `SECURITY.md` (it still said "5.1.x" and "Tell them where to go"), which collided add/add with this branch's real policy and made PR #1 `CONFLICTING`. Resolved in merge commit `b61f205` by keeping the approved Atron policy and discarding the template, per the maintainer's decision; `40e612d` remains in history unrewritten. The merge tree is content-identical to `76152c1`, and the PR is now `MERGEABLE`. |
+| `main` carries a placeholder `SECURITY.md` | **Resolved (M0-R7)** | Commit `40e612d` on `main` added GitHub's unedited starter `SECURITY.md` (it still said "5.1.x" and "Tell them where to go"), which collided add/add with this branch's real policy and made PR #1 `CONFLICTING`. Resolved in merge commit `b61f205` by keeping the approved Atron policy and discarding the template, per the maintainer's decision; `40e612d` remains in history unrewritten. The merge tree is content-identical to `76152c1`, and the PR became `MERGEABLE` (it was merged later as `78a1911`, carrying blob `57d0266` for `SECURITY.md` unchanged). |
 | Project identity clearance (ADR-0003 §1.4) | **Partly resolved (M0-R5)** | The non-legal, publicly verifiable checks are complete and recorded in ADR-0003: GitHub, Linguist, extension databases, Go/PyPI/npm/Homebrew and the executable-name collision. Result: no conflicting language and no registered use of `.atrn`; the `atron-cli` executable collision is confirmed. **Trademark and legal clearance remain unperformed**, so the project is still *accepted for development, not cleared for public distribution*. |
 | The `atron` executable collides with the unrelated `atron-cli` | Maintainer | **Confirmed (M0-R5)** from the published artifact: `entry_points.txt` in `atron_cli-0.0.1-py2.7.egg` declares `atron=atron_cli.atron:cli`. Documented in `README.md` and `GOVERNANCE.md`; may motivate a rename. |
 | `docs/pt-BR/`, `docs/spec/`, `docs/bench/`, `testdata/`, `examples/` and `editors/` contain only a `README.md` describing what will land there | Milestones M1+ | Created so the layout of chapter 3.3 exists. Each directory explains its future contents and states that it is empty; no placeholder source files were invented. |
@@ -273,6 +308,11 @@ Fuzzing targets do not exist yet; the first is `FuzzLexer` in M1.
 
 ## Next milestone
 
-M1 (lexer) is **not started** and must not start until the M0 report is
-approved. The report is delivered in the session response rather than in this
-file, per Appendix B.2 of the guide.
+M0 is formally accepted (2026-10-17) and merged to `main`. M1 (lexer) is **not
+started and is not authorized**: the maintainer accepted M0 as technically
+complete, which is not a decision to begin M1. No M1 branch exists, and no lexer,
+token, parser, compiler or VM code has been written. See
+[`docs/audits/m0-acceptance.md`](audits/m0-acceptance.md).
+
+No release has been published and no tag exists. Publishing is M10 and remains
+out of scope.
