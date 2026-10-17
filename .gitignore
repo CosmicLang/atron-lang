@@ -1,0 +1,28 @@
+# Binários e artefatos de build
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+
+/bin/
+/dist/
+/build/
+/coverage/
+
+# Testes e coverage
+*.html
+
+# IDE / Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema Operacional
+.DS_Store
+Thumbs.db
