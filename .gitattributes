@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Normalise line endings so a checkout on any platform is byte-identical.
+#
+# Without this file, Git applies no normalisation and a Windows checkout with
+# the Git-for-Windows default core.autocrlf=true materialises every text file
+# with CRLF. `gofmt` accepts only LF, so the Windows CI legs reported
+# LF-only sources as unformatted and failed before tests ever ran. The defect
+# was in the repository's line-ending policy, not in the Go sources.
+#
+# text=auto lets Git detect text files and store LF in the object database;
+# eol=lf forces LF in the working tree on every platform, including Windows.
+* text=auto eol=lf
+
+# Go sources are always LF. gofmt rejects CRLF, and go:generate tooling and
+# golden-file comparisons are byte-sensitive.
+*.go text eol=lf
+
+# Shell scripts, Makefile and CI configuration must keep LF: a CRLF shell
+# script fails to execute, and the Makefile depends on tab indentation.
+*.sh text eol=lf
+Makefile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.mk text eol=lf
+
+# Documentation and data.
+*.md text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+NOTICE text eol=lf
+
+# Binary assets must never be normalised. The authoritative specification PDF
+# is untracked and ignored, but declaring the class keeps a future committed
+# binary from being silently rewritten by a line-ending conversion.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary
