@@ -200,9 +200,11 @@ only public Go API and will follow strict semantic compatibility from 1.0.
   Python tool (`atron-cli`) also installs an `atron` executable. Do not install
   Atron over an existing unrelated tool of the same name, and check `which
   atron` after installation. See ADR-0003.
-- **Trademark and name clearance.** Public distribution requires trademark and
-  name-availability checks that have **not** been performed. See ADR-0003 and
-  `GOVERNANCE.md`.
+- **Trademark clearance.** Public distribution requires trademark clearance that
+  has **not** been performed. The non-legal name and extension checks
+  (GitHub, Linguist, extension databases, Go/PyPI/npm/Homebrew registries) were
+  completed on 2026-10-17 and found no competing language and no registered use
+  of `.atrn`; they are not a legal opinion. See ADR-0003 and `GOVERNANCE.md`.
 - **No stability promise yet.** The language, the bytecode format and
   `pkg/atron` may change without notice before 1.0.
 

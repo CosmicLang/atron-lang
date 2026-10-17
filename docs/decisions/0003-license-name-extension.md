@@ -70,7 +70,8 @@ Positive:
 
 - Patent grant and retaliation clause are in place from the first commit.
 - The extension is unclaimed in public extension databases at the time of
-  writing, so editors can associate it without ambiguity.
+  writing, so editors can associate it without ambiguity. This was re-verified
+  in M0-R5: see "Clearance research" below for the queries and their results.
 - The DCO keeps contribution friction low while preserving provenance.
 
 Negative:
@@ -86,20 +87,85 @@ Negative:
 ## Open issue: clearance before publication
 
 The guide requires the maintainer to verify the name and extension before public
-distribution. **That verification has not been completed.** Before the repository
-is made public or a release is tagged, the following must be done and recorded
-here:
+distribution. **That verification is only partly complete:** the non-legal checks
+(steps 1 and 2) were performed in M0-R5 and are recorded below, while trademark
+clearance and the final keep-or-rename decision (steps 3 and 4) remain open.
+Before the repository is made public or a release is tagged, the following must
+be finished and recorded here:
 
-1. Search GitHub for `path:*.atrn` and for the string "Atron language" to confirm
-   no competing language uses the extension.
-2. Check GitHub Linguist's `languages.yml` and public extension databases
-   (FileInfo and similar) for `.atrn`.
+1. ~~Search GitHub for `path:*.atrn` and for the string "Atron language" to confirm
+   no competing language uses the extension.~~ **Done (M0-R5).** No competing
+   language and no existing `.atrn` file were found; see the research section.
+2. ~~Check GitHub Linguist's `languages.yml` and public extension databases
+   (FileInfo and similar) for `.atrn`.~~ **Done (M0-R5).** Absent from Linguist
+   and from FileInfo; see the research section for the one ambiguous hit.
 3. Perform a trademark search for "Atron" in the relevant jurisdictions, or
-   obtain legal advice.
+   obtain legal advice. **Outstanding.**
 4. Decide whether to keep the name, given the `atron-cli` executable collision,
-   or to rename with a migration plan for the module path.
+   or to rename with a migration plan for the module path. **Outstanding** —
+   deliberately left to the maintainer, since M0-R5 found no conflict that
+   forces the decision.
 
-Until step 4 is recorded, this ADR should be read as *accepted for development,
-not cleared for public distribution*. `GOVERNANCE.md` states the interim
-trademark policy, and `SECURITY.md` and `CODE_OF_CONDUCT.md` state that they are
-incomplete until a contact address exists.
+### Related governance items, not part of this decision
+
+Two items are often mentioned alongside clearance. They are different in kind
+and must not be conflated:
+
+| Item | Status | Detail |
+|---|---|---|
+| Moderation contact in `CODE_OF_CONDUCT.md` | **Resolved (M0-R2)** | The Enforcement section publishes a working contact address. An earlier revision of this ADR said the file was incomplete "until a contact address exists"; that statement is obsolete and has been removed. Nothing about the Code of Conduct blocks publication. |
+| Private vulnerability reporting (PVR) | **Outstanding, and unrelated to name clearance** | `GET /repos/CosmicLang/atron-lang/private-vulnerability-reporting` returns `{"enabled": false}`; re-checked on 2026-10-17. `SECURITY.md` therefore describes the intended process and states the disabled status plainly rather than claiming a live channel. Enabling it needs the repository *Admin* role, so it is a settings action, not a documentation fix. |
+
+Name and extension clearance neither depends on nor unblocks PVR: the former is
+a naming question, the latter is a security-channel configuration. The project
+remains *not cleared for public distribution* on the strength of step 3 alone,
+not because of either of these rows.
+
+Until step 3 is performed and step 4 is recorded, this ADR is *accepted for
+development, not cleared for public distribution*. `GOVERNANCE.md` states the
+interim trademark policy.
+
+## Clearance research (M0-R5)
+
+Performed on 2026-10-17 with read-only, publicly verifiable requests. The scope
+is deliberately limited to what can be checked without legal advice: whether a
+competing *language* uses the name, whether the extension is registered, and
+whether the executable name collides.
+
+### Confirmed conflicts
+
+| Finding | Evidence | Assessment |
+|---|---|---|
+| A PyPI package installs an executable named `atron` | `atron-cli` 0.0.1, `entry_points.txt` inside `atron_cli-0.0.1-py2.7.egg` declares `atron=atron_cli.atron:cli`. https://pypi.org/pypi/atron-cli/json | **Material, expected, accepted.** A user who installs it finds the wrong `atron` on `PATH`. Not a language. Documented in `README.md` and `GOVERNANCE.md`; the mitigation is a warning, not a rename. |
+| The bare name `atron` is taken in npm | `npm view atron` → 1.0.13-a, described as an Electron/Angular framework. https://registry.npmjs.org/atron | **Immaterial for this project.** The command is distributed as a Go binary, not an npm package, and `atron-lang` is the module path. |
+| `atron-js` exists in npm | 1.1.2, string/number utility functions. https://registry.npmjs.org/atron-js | Immaterial: a utility library, not a language. |
+| Many unrelated repositories use the name | `GET /search/repositories?q=atron+in:name` → 305 results, e.g. `RISC-NYUAD/ATRON` (USV debris-collection system, Python), `skylix-dev/Atron` (React desktop apps), `atron-cc/atron-cli` | **Expected.** None is a programming language. The name is not unique and was never claimed to be. |
+
+### Inconclusive, recorded as such
+
+| Check | Observation | Why it is inconclusive |
+|---|---|---|
+| Trademark search for "Atron" | Not performed | Requires legal advice and jurisdiction scope. **No clearance is claimed.** |
+| `file-extension.org` `.atrn` page | Returns HTTP 200 with a page titled "File extension ATRN" | **Not evidence of a real format.** The page has no file type, no developer and no opening program, and is dated 01/01/1970. A control request for a nonsense extension (`qqzzxx`) also returns 200, so the site auto-generates pages. Recorded to avoid a later reader mistaking it for a registered format. |
+| `fileinfo.com` `.atrn` | HTTP 404. The sibling `.atr` page resolves to "ATR File". | Consistent with `.atrn` being unregistered, but absence on one site is not proof of global non-use. |
+
+### No conflict found
+
+| Check | Method | Result |
+|---|---|---|
+| Competing language named Atron | `GET /search/repositories?q="atron language"` and `q=atron+topic:programming-language` | 0 results each. No programming language uses the name. |
+| `.atrn` in use anywhere on GitHub | Code search `extension:atrn` → **0**; `path:.atrn` → **0**; `atron+in:path+extension:atrn` → **0** | Zero is a real result, not a failed query: the controls `extension:go` and `extension:rs` return 45,219,840 and 31,260,672 on the same endpoint. |
+| `.atrn` in GitHub Linguist | `languages.yml` has 9,676 lines and a valid `Go:` entry at line 2833; no `atrn` or `Atron` match. Extensions beginning `.at` present are only `.atomignore` and `.ats`. | The extension is unclaimed by Linguist, so syntax highlighting will need an upstream contribution rather than conflicting with an existing language. |
+| `.atrn` as a Go module | `https://proxy.golang.org/github.com/atron/atron/@v/list` → 404 | No module occupies the namespace. |
+| `atron` in Homebrew | Searched all 8,661 formulae in `formula.json`; no name contains `atron` | No formula collision. |
+| PyPI `atron` (bare) | `https://pypi.org/pypi/atron/json` → 404 | Only `atron-cli` exists. |
+| `.atr`, `.atn`, `.atx` already taken | `.atr` → "ATR File" on fileinfo.com | Confirms the original rejection of these extensions was correct. |
+
+### Conclusion
+
+Nothing found requires renaming the project before publication, and the
+`atron-cli` collision is a documented packaging caveat rather than a conflict
+that forces a new name. Because no trademark search has been performed, this
+section is **research, not clearance**: the license, project name, source
+extension and module path are unchanged, and the decision to keep the name
+remains the maintainer's — see step 4 above.
