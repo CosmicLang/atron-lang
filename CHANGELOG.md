@@ -104,6 +104,16 @@ started.
 
 ### Fixed
 
+- `docs/spec/lexical.md` contradicted itself about the dot. §4 listed `Dot` as one
+  of the twelve punctuation kinds and `grammar.md` relied on it for member access,
+  yet §8.2 stated that a bare `.` and a leading `.` in `.5` were lexical error
+  E0103. Both cannot hold: a lexer that reports E0103 for `.` could not emit the
+  `Dot` that `a.b` needs. The specification now states one rule — a `.` that does
+  not continue a numeric literal is exactly one `Dot` token with **no** diagnostic,
+  including `.5`, `5.` and a bare `.`; `.5` stays invalid as a float literal and is
+  rejected as an expression by the parser with E0201; E0103 is reserved for
+  malformed number literals and integer overflow. The M1 conformance checklist
+  gained the corresponding cases and had two duplicated entry numbers repaired.
 - `atron` returned exit code `2` for incorrect command-line usage. Chapter 4.8
   of the specification reserves `2` for compilation diagnostics and assigns `64`
   to CLI misuse, so `atron bogus`, `atron` with no arguments and

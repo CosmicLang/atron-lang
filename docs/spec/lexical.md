@@ -113,6 +113,13 @@ Clarifications that are normative:
   `<=`, `>=` before their single-character prefixes, and the compound
   assignments `+= -= *= /= %=` before `+ - * / %`. There is no `===`, `!==`,
   `&&`, `||`, `!` or `++`/`--` in the language.
+- **`.` is `Dot`, and `Dot` is never an error.** A `.` that does not continue a
+  numeric literal lexes as exactly one `Dot` token, with no diagnostic of any
+  kind. By the longest-match rule above, `..` is `DotDot` and `..=` is
+  `DotDotEq`, so `...` is `DotDot` followed by `Dot`. `Dot` is the token that
+  member access (`a.b`) and the §7 continuation rule refer to. Whether a `.`
+  occurs in a syntactically legal position is a **parser** question answered by
+  E0201; it is never a lexical one.
 
 ## 5. Identifiers
 
@@ -249,20 +256,41 @@ Accepted: `42`, `1_000_000`, `0xFF`, `0b1010`, `0o755`. The value type is
   of range, and that is a documented consequence, not a special case to fix.
 - Overflow of the literal's value is **E0103**.
 - A decimal integer immediately followed by `.` and a digit is a float (§8.2),
-  not an `Int` followed by a `Dot`.
+  not an `Int` followed by a `Dot`. A `.` that does not meet that condition ends
+  the integer and lexes as its own `Dot`, which is valid punctuation (§4, §8.2).
 
 ### 8.2 Floating-point literals (`Float`)
 
 Accepted: `3.14`, `1e-3`, `2.5E10`, `1_000.5`. A **digit is required before and
-after** the decimal point, so `.5` and `5.` are not float literals; a leading
-`.` is E0103.
+after** the decimal point, so `.5` and `5.` are **not** float literals.
 
 - Value semantics are **IEEE-754 binary64**.
 - A well-formed literal whose value **overflows to ±Infinity**, or whose
   rounding **underflows** to zero, is **accepted**. Magnitude alone is never a
   lexical error.
-- A malformed spelling — `1e`, `1e+`, a bare `.`, a misplaced `_` — is
-  **E0103**.
+- A malformed spelling is **E0103** only **once a numeric literal has begun**:
+  `1e`, `1e+`, `0x`, `1_`, a misplaced `_`. A leading or standalone `.` never
+  starts a literal, so it is never E0103 (see below).
+
+**A leading dot is not a number, and it is not an error.** Scanning of a
+numeric literal only ever begins at a decimal digit, so a `.` that is not
+preceded by a digit and followed by one is left for the punctuation rules of
+§4:
+
+| Source | Tokens | Lexical diagnostic |
+|---|---|---|
+| `1.5` | `Float`(`1.5`) | none |
+| `.5` | `Dot`, `Int`(`5`) | **none** |
+| `5.` | `Int`(`5`), `Dot` | **none** |
+| `.` | `Dot` | **none** |
+| `1..5` | `Int`(`1`), `DotDot`, `Int`(`5`) | none |
+| `1e` | `Int`… malformed | E0103 at `1` |
+
+`.5` therefore fails as **an expression**, at the parser, with **E0201** — the
+`Dot` is valid punctuation and expected an identifier after it. That separation
+is deliberate: the lexer does not know or care where a `.` appears, so it can
+never report E0103 for one. `.5` remains rejected as a float literal (§8.2 and
+the guide's 4.4 literal table), and no rule in this document permits it.
 
 ### 8.3 String literals (`String`)
 
@@ -340,7 +368,7 @@ localisation, colour and the message catalogue are M6.
 |---|---|---|
 | `E0101` | invalid character | the offending code point |
 | `E0102` | unterminated string or raw string literal | the opening quote or backtick |
-| `E0103` | malformed number literal, or integer literal overflow | the start of the literal |
+| `E0103` | malformed number literal, or integer literal overflow; never a standalone `.` | the start of the literal |
 | `E0104` | unterminated block comment | the opening `/*` |
 | `E0105` | invalid escape sequence | the backslash |
 
@@ -411,14 +439,18 @@ The lexer is conformant when, at minimum, all of these hold:
 | 6 | A shebang line and a leading BOM are skipped; an interior BOM is E0101. |
 | 7 | ASI fires on exactly the §7 set and collapses consecutive `Newline`s, emitting one before `EOF` when required. |
 | 8 | A `Newline` is **not** suppressed when a real line break precedes `{`, and is **not** emitted when `{` follows on the same line; the parser-side skip is tested in M2, not here. |
-| 9 | `.5` is E0103; `1e400` is a valid `Float` evaluating to +Infinity; `1_000_000` and `0xFFFF` are `Int`; `1_` is E0103. |
+| 9 | `.5` produces no lexical diagnostic and lexes as `Dot`, `Int`(`5`); `1e400` is a valid `Float` evaluating to +Infinity; `1_000_000` and `0xFFFF` are `Int`; `1_` is E0103. |
 | 10 | `"a {f("b")} c"` is a single `String`; an unterminated `"` is E0102; a backticked raw string is `RawString`, and a multiline raw string is accepted. |
 | 11 | For every real token, `Lexeme == string(src[Pos.Offset:End.Offset])`, including a multiline raw string written with CRLF and one containing a lone CR. The synthetic `Newline` is the only exception and has an empty lexeme. |
 | 12 | Collected comments preserve their original source bytes exactly, including CR and CRLF inside a block comment. |
-| 11 | `/* /* */` closes at the first `*/`; an unterminated `/*` is E0104. |
-| 12 | Every comment is returned by `Comments()`; none is dropped. |
-| 13 | `Next()` never panics and always makes progress on arbitrary bytes; `FuzzLexer` asserts this. |
-| 14 | Every diagnostic carries a position that slices the source at the offending byte. |
+| 13 | `/* /* */` closes at the first `*/`; an unterminated `/*` is E0104. |
+| 14 | Every comment is returned by `Comments()`; none is dropped. |
+| 15 | `Next()` never panics and always makes progress on arbitrary bytes; `FuzzLexer` asserts this. |
+| 16 | Every diagnostic carries a position that slices the source at the offending byte. |
+| 17 | A standalone `.` lexes as exactly one `Dot` and produces **no** diagnostic; `..` is `DotDot`, `..=` is `DotDotEq`, and `...` is `DotDot` followed by `Dot`. |
+| 18 | `a.b` yields `Ident`, `Dot`, `Ident`, so member access is available to the parser; `Dot` is never reported as E0103, and no lexical error is raised in a member-access position. |
+| 19 | `.5` produces **no** lexical diagnostic and is **not** a `Float`: it lexes as `Dot`, `Int`(`5`). The rejection of `.5` as an expression is a parser E0201, asserted in M2, not here. |
+| 20 | `5.` is `Int`(`5`) followed by `Dot`, and `1..5` is `Int`, `DotDot`, `Int` — a `.` never silently joins or splits a number beyond the §8.2 rule. |
 
 ## 14. What this document does not claim
 

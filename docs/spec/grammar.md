@@ -514,6 +514,16 @@ duplicate exists whether or not the file is executable, so it is reported by
 error catalogue requires explicit maintainer approval, and it must not be
 allocated to any other feature.
 
+**Lexical versus parser responsibility for punctuation.** The lexer classifies
+punctuation and reports nothing about its position; the parser decides whether
+that punctuation is legal where it appears. Every `.` that does not continue a
+numeric literal is a `Dot` token produced without a diagnostic — including a
+bare `.`, `5.` and `.5` — and any error in those forms is **E0201** from this
+layer, never `E0103`. `E0103` is reserved for malformed number literals and
+integer overflow, and a `.` cannot cause it. Conversely, `a.b` is valid member
+access at level 11 of §2 and must not be rejected. See `lexical.md` §4 and §8.2
+for the token-level statement of the same rule.
+
 ## 7. Conformance checklist for M2
 
 | # | Requirement |
@@ -533,6 +543,7 @@ allocated to any other feature.
 | 13 | `a == b == c`, `a < b < c` and `a..b..c` are each E0201; non-associativity is an error, not a left-fold. |
 | 14 | `a = b = 1` and `if (x = 1)` are E0201; assignment never yields a value. |
 | 15 | Every E0310 example in §5.7 is accepted by the parser and rejected only by executable-context validation; the deliberate two-`main` file is E0302, not E0310. |
+| 16 | `.5` is rejected as **E0201** at the parser: the lexer produces `Dot`, `Int`(`5`) with no lexical diagnostic, so the error is a missing expression on either side of `Dot`, never E0103. `5.` and `a.` are likewise E0201, while `a.b` parses as member access. |
 
 ## 8. What this document does not claim
 
