@@ -12,6 +12,8 @@ package documentation and in `docs/spec/`.
 | [0001](0001-value-representation.md) | Runtime value representation | Accepted (benchmark validation deferred to M4) |
 | [0002](0002-language-of-record.md) | Language of code, messages and documentation | Accepted |
 | [0003](0003-license-name-extension.md) | License, project name and source file extension | Accepted for development; not cleared for public distribution |
+| [0004](0004-const-declarations.md) | Immutable declarations use `const` | Accepted (2026-10-17) |
+| [0005](0005-explicit-entrypoint.md) | Executable roots declare an explicit `fn main()` | Accepted (2026-10-17) |
 
 ## When an ADR is required
 
@@ -49,7 +51,7 @@ Positive, negative, and impact on tests, performance or compatibility.
 ## Rules
 
 - **Numbering is sequential and never reused.** The next ADR is
-  `0004-short-title.md`.
+  `0006-short-title.md`.
 - **English.** See ADR-0002.
 - **Never delete an ADR.** A decision that is reversed is marked
   `superseded by ADR-MMMM` and links to its replacement. The history of a wrong

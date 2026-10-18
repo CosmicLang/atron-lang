@@ -147,16 +147,25 @@ entry will not be merged.
 Language changes are more consequential than code changes, because programs
 written by other people depend on them. The process is:
 
-1. Open an issue using the *Language change proposal* template and describe the
-   problem, not only the proposed syntax.
+1. Open an issue using the **[Language change proposal][lc-template]** template
+   and describe the problem, not only the proposed syntax. If the template is not
+   offered by the GitHub interface, blank issues are enabled — open a blank issue
+   and use the template's headings from `.github/ISSUE_TEMPLATE/language_change.md`.
 2. Discussion happens in the issue. Consensus is sought, not voted on.
 3. If accepted, the change is recorded in an ADR and the specification is
-   updated before implementation.
+   updated **before** implementation.
 4. Implementation follows the milestone plan in `docs/PROGRESS.md`.
+
+A proposal records its own **chronology**. A decision already taken by the
+maintainer is opened as a public record for audit and objection, and is
+described as such — never as the outcome of a discussion that did not happen.
+The template has an explicit section for this.
 
 Breaking changes before 1.0 are allowed when they buy a materially better
 language, and are recorded in `CHANGELOG.md` under *Changed*. After 1.0 they
 require a deprecation cycle.
+
+[lc-template]: .github/ISSUE_TEMPLATE/language_change.md
 
 ## Reporting bugs
 

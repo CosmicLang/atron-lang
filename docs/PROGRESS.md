@@ -1,16 +1,22 @@
 # Atron project progress
 
-Current milestone: **M1 — lexer (not started, not authorized)**
+Current milestone: **M1 — lexer (specification ratified, implementation not started, not authorized)**
 Last updated: 2026-10-17
 
 M0 — repository foundation is **formally accepted** by the maintainer on
 2026-10-17. The permanent record is
 [`docs/audits/m0-acceptance.md`](audits/m0-acceptance.md).
 
+M1's language contract is **ratified**: [`lexical.md`](spec/lexical.md),
+[`grammar.md`](spec/grammar.md), [ADR-0004](decisions/0004-const-declarations.md)
+and [ADR-0005](decisions/0005-explicit-entrypoint.md), with the public record in
+issue [#3](https://github.com/CosmicLang/atron-lang/issues/3). **No M1 code
+exists**, and ratification is not an implementation authorization.
+
 | Milestone | State | Notes |
 |---|---|---|
 | M0 — repository foundation | **formally accepted — technically complete (2026-10-17)** | Merged to `main` by PR #1 (merge commit `78a1911`); post-merge CI green on all six platform/Go legs plus lint and vulnerability check. See [acceptance record](audits/m0-acceptance.md), “Verification”, “M0 acceptance criteria” and “Known gaps”. |
-| M1 — lexer | **not started — implementation not authorized** | Acceptance of M0 is not authorization to begin M1. |
+| M1 — lexer | **specification ratified — implementation not started, not authorized** | The lexical contract is normative in [`spec/lexical.md`](spec/lexical.md). No token, lexer or `diag` code exists. Acceptance of M0 and ratification of the spec are both separate from the authorization to implement. |
 | M2 — AST and parser | not started | |
 | M3 — resolver | not started | |
 | M4 — values, bytecode, compiler, VM | not started | Runs the ADR-0001 benchmark validation. |
@@ -32,6 +38,8 @@ started` means exactly that: no code for the milestone exists.
 | [0001](decisions/0001-value-representation.md) | Runtime value representation | Accepted; benchmark validation deferred to M4 |
 | [0002](decisions/0002-language-of-record.md) | Language of code, messages and documentation | Accepted |
 | [0003](decisions/0003-license-name-extension.md) | License, project name and source file extension | Accepted for development, **not** cleared for public distribution |
+| [0004](decisions/0004-const-declarations.md) | Immutable declarations use `const` | Accepted (2026-10-17) |
+| [0005](decisions/0005-explicit-entrypoint.md) | Executable roots declare an explicit `fn main()` | Accepted (2026-10-17) |
 
 ## Governance decisions (M0-R2)
 
@@ -308,11 +316,20 @@ Fuzzing targets do not exist yet; the first is `FuzzLexer` in M1.
 
 ## Next milestone
 
-M0 is formally accepted (2026-10-17) and merged to `main`. M1 (lexer) is **not
-started and is not authorized**: the maintainer accepted M0 as technically
-complete, which is not a decision to begin M1. No M1 branch exists, and no lexer,
-token, parser, compiler or VM code has been written. See
-[`docs/audits/m0-acceptance.md`](audits/m0-acceptance.md).
+M0 is formally accepted (2026-10-17) and merged to `main`.
+
+M1's language contract is **ratified** and normative in
+[`spec/lexical.md`](spec/lexical.md) and [`spec/grammar.md`](spec/grammar.md),
+with the deviations from the guide recorded in
+[ADR-0004](decisions/0004-const-declarations.md) and
+[ADR-0005](decisions/0005-explicit-entrypoint.md). The public language-change
+record is issue [#3](https://github.com/CosmicLang/atron-lang/issues/3).
+
+**M1 implementation has not started and is not authorized.** Ratifying a
+specification is not a decision to implement it: the token, lexer and `diag`
+packages are still scaffolding, no M1 branch exists beyond the documentation
+branch that produced this specification, and no lexer, parser, compiler or VM
+code has been written.
 
 No release has been published and no tag exists. Publishing is M10 and remains
 out of scope.
