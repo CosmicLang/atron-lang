@@ -273,9 +273,9 @@ after** the decimal point, so `.5` and `5.` are **not** float literals.
   starts a literal, so it is never E0103 (see below).
 
 **A leading dot is not a number, and it is not an error.** Scanning of a
-numeric literal only ever begins at a decimal digit, so a `.` that is not
-preceded by a digit and followed by one is left for the punctuation rules of
-§4:
+numeric literal only ever begins at a decimal digit, so a `.` is left to the
+punctuation rules of §4 unless it sits between digits, in which case the float
+rule above applies:
 
 | Source | Tokens | Lexical diagnostic |
 |---|---|---|
@@ -284,13 +284,13 @@ preceded by a digit and followed by one is left for the punctuation rules of
 | `5.` | `Int`(`5`), `Dot` | **none** |
 | `.` | `Dot` | **none** |
 | `1..5` | `Int`(`1`), `DotDot`, `Int`(`5`) | none |
-| `1e` | `Int`… malformed | E0103 at `1` |
+| `1e` | malformed `Int`-started literal | E0103 at `1` |
 
 `.5` therefore fails as **an expression**, at the parser, with **E0201** — the
 `Dot` is valid punctuation and expected an identifier after it. That separation
 is deliberate: the lexer does not know or care where a `.` appears, so it can
-never report E0103 for one. `.5` remains rejected as a float literal (§8.2 and
-the guide's 4.4 literal table), and no rule in this document permits it.
+never report E0103 for one. `.5` remains rejected as a float literal, as the
+guide's 4.4 literal table requires, and no rule in this document permits it.
 
 ### 8.3 String literals (`String`)
 
