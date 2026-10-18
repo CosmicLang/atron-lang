@@ -1,7 +1,7 @@
 # Atron project progress
 
-Current milestone: **M1 — lexer (specification ratified, implementation not started, not authorized)**
-Last updated: 2026-10-17
+Current milestone: **M1 — lexer (implementation started, W0–W2 only, not accepted)**
+Last updated: 2026-10-18
 
 M0 — repository foundation is **formally accepted** by the maintainer on
 2026-10-17. The permanent record is
@@ -10,18 +10,24 @@ M0 — repository foundation is **formally accepted** by the maintainer on
 M1's language contract is **ratified**: [`lexical.md`](spec/lexical.md),
 [`grammar.md`](spec/grammar.md), [ADR-0004](decisions/0004-const-declarations.md)
 and [ADR-0005](decisions/0005-explicit-entrypoint.md), with the public record in
-issue [#3](https://github.com/CosmicLang/atron-lang/issues/3). **No M1 code
-exists**, and ratification is not an implementation authorization.
+issue [#3](https://github.com/CosmicLang/atron-lang/issues/3). The contract was
+merged to `main` by PR #4 (merge commit `398ae891`).
+
+Under Engineering Directive 003-R1 the maintainer authorized the first
+implementation phase of M1: **work packages W0, W1 and W2 only**. Those three are
+implemented to the extent demonstrated by the tests listed below. **W3–W10 are
+not started and not authorized**, no other milestone has begun, and **M1 is not
+accepted**.
 
 | Milestone | State | Notes |
 |---|---|---|
 | M0 — repository foundation | **formally accepted — technically complete (2026-10-17)** | Merged to `main` by PR #1 (merge commit `78a1911`); post-merge CI green on all six platform/Go legs plus lint and vulnerability check. See [acceptance record](audits/m0-acceptance.md), “Verification”, “M0 acceptance criteria” and “Known gaps”. |
-| M1 — lexer | **specification ratified — implementation not started, not authorized** | The lexical contract is normative in [`spec/lexical.md`](spec/lexical.md). No token, lexer or `diag` code exists. Acceptance of M0 and ratification of the spec are both separate from the authorization to implement. |
-| M2 — AST and parser | not started | |
+| M1 — lexer | **implementation started — W0–W2 only; not accepted** | The lexical contract is normative in [`spec/lexical.md`](spec/lexical.md). `internal/token`, `internal/diag` and the `internal/lexer` traversal *infrastructure* exist. The scanner is **incomplete**: numbers, strings, raw strings, operators, punctuation, comments and ASI are not implemented. See “M1 work-package status” below. |
+| M2 — AST and parser | not started | Not authorized by directive 003-R1. |
 | M3 — resolver | not started | |
 | M4 — values, bytecode, compiler, VM | not started | Runs the ADR-0001 benchmark validation. |
 | M5 — compound types and structs | not started | |
-| M6 — errors and diagnostics | not started | |
+| M6 — errors and diagnostics | not started | Receives the rest of `internal/diag`: rendering, colour, localisation, snippets. |
 | M7 — modules, standard library, embedding API | not started | |
 | M8 — formatter, test runner, REPL | not started | |
 | M9 — performance | not started | |
@@ -30,6 +36,42 @@ exists**, and ratification is not an implementation authorization.
 `complete` means every deliverable of the milestone exists and every acceptance
 criterion was demonstrated by a command whose output is recorded below. `not
 started` means exactly that: no code for the milestone exists.
+
+## M1 work-package status
+
+Directive 003-R1 authorized W0, W1 and W2 only. The table records what is
+actually implemented, not what the milestone still needs.
+
+| Work package | State | What exists |
+|---|---|---|
+| W0 — diagnostic foundation | **implemented** | `internal/diag`: `Severity` (`Note` < `Warning` < `Error`), the eight-field `Diagnostic`, `New`, `Errorf`, deterministic `Error()` text, and the stable codes `E0101`–`E0105`. Rendering, colour, localisation, snippets and `ATRON_LANG`/`NO_COLOR` are M6 and absent by design. |
+| W1 — complete token model | **implemented** | `internal/token`: the exact 62-kind `uint8` inventory with `Illegal` as zero value, the 22-keyword table with exact case-sensitive `LookupIdent`, `Kind.String`, `Kind.IsKeyword`, `EndsStatement` over the ratified ASI set, `Pos`/`Token`/`Comment` with exclusive `End`, and `KindCount`/`KeywordCount`. |
+| W2 — lexer infrastructure | **implemented (infrastructure only)** | `internal/lexer`: immutable source buffer, byte cursor, UTF-8 decoding, rune-based columns, LF/CRLF/CR logical line breaks, Unicode identifier classification, keyword recognition, leading-BOM skipping, shebang skipping, per-byte malformed-UTF-8 recovery, guaranteed forward progress and correct EOF positioning. |
+| W3–W10 | **not started — not authorized** | Numbers, strings, raw strings, operators, punctuation, comment collection, ASI, the `atron tokens` command and the complete scanner. |
+
+`lexer.Next` currently recognises only identifiers, keywords, whitespace, end of
+input, malformed UTF-8 and an interior BOM. Every other input yields an
+`Illegal` placeholder **without** a diagnostic, so the lexer never fabricates a
+normative error for syntax the authorized packages do not implement.
+
+## Verification recorded for W0–W2
+
+Run on 2026-10-18 from `phase/m1-lexer-w0-w2` (base `398ae891`):
+
+| Command | Result |
+|---|---|
+| `go fmt ./...` | no files reformatted |
+| `go vet ./...` | clean |
+| `go test ./...` | pass |
+| `go test -race ./...` | pass |
+| `go test -cover ./internal/token ./internal/diag ./internal/lexer` | `token` 100.0%, `diag` 100.0%, `lexer` 100.0% of statements |
+| `make verify` | `go.mod: tidy`, `gofmt: clean`, vet, race tests, `golangci-lint` 0 issues, binary built |
+| `go test ./cmd/atron/` | M0 CLI smoke tests still pass |
+
+The 95% coverage target that M1 acceptance requires applies to the **complete**
+lexer. W2 is not the complete lexer, so this 100% figure covers only the
+implemented subset and is not evidence of M1 acceptance. Known limitations are
+listed in the Draft PR that carries these packages.
 
 ## Decisions in force
 
