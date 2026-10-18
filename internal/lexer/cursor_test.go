@@ -5,9 +5,33 @@ package lexer
 import (
 	"math/rand"
 	"testing"
+	"unicode"
 
 	"github.com/CosmicLang/atron-lang/internal/token"
 )
+
+// numericSample is one rune from a Unicode numeric category, used to check the
+// internal predicates. It is declared here rather than shared with the external
+// test package because this file is in package lexer.
+type numericSample struct {
+	r        rune
+	category string
+}
+
+// numericSamples spans every \p{N} category with characters that
+// unicode.IsDigit does and does not recognise.
+var numericSamples = []numericSample{
+	{'\u0663', "Nd"},
+	{'\u09E7', "Nd"},
+	{'\uFF11', "Nd"},
+	{'\u216B', "Nl"},
+	{'\u2170', "Nl"},
+	{'\u3007', "Nl"},
+	{'\u00B2', "No"},
+	{'\u00BD', "No"},
+	{'\u2153', "No"},
+	{'\u2474', "No"},
+}
 
 // TestPeekAtEOF covers the end-of-input branch of peek.
 func TestPeekAtEOF(t *testing.T) {
@@ -126,10 +150,91 @@ func TestIdentPredicates(t *testing.T) {
 			t.Errorf("isIdentContinue(%q) = false, want true", r)
 		}
 	}
+
+	// The continuation class is \p{N}, not just the Nd digits that
+	// unicode.IsDigit recognises, so every numeric category must continue an
+	// identifier (lexical.md §5).
+	for _, sample := range numericSamples {
+		if !isIdentContinue(sample.r) {
+			t.Errorf("isIdentContinue(%q) = false for category %s, want true: \\p{N} continues an identifier",
+				sample.r, sample.category)
+		}
+		if isIdentStart(sample.r) {
+			t.Errorf("isIdentStart(%q) = true for category %s, want false: \\p{N} never starts an identifier",
+				sample.r, sample.category)
+		}
+	}
+
 	notContinues := []rune{'-', '.', ' ', '\u0301', '!', 0}
 	for _, r := range notContinues {
 		if isIdentContinue(r) {
 			t.Errorf("isIdentContinue(%q) = true, want false", r)
+		}
+	}
+}
+
+// TestIdentContinueCoversAllUnicodeNumericCategories sweeps every numeric
+// category over a fixed set of runes, asserting that the predicate accepts the
+// whole of \p{N}. This is a category-level check, not a statement-coverage
+// substitute.
+func TestIdentContinueCoversAllUnicodeNumericCategories(t *testing.T) {
+	t.Parallel()
+
+	seen := map[string]int{}
+	for _, sample := range numericSamples {
+		seen[sample.category]++
+		if !unicode.IsNumber(sample.r) {
+			t.Errorf("U+%04X is not in \\p{N}, but is listed under %s", sample.r, sample.category)
+			continue
+		}
+		if !isIdentContinue(sample.r) {
+			t.Errorf("isIdentContinue(U+%04X) = false, want true for %s", sample.r, sample.category)
+		}
+	}
+
+	for _, category := range []string{"Nd", "Nl", "No"} {
+		if seen[category] == 0 {
+			t.Errorf("no sample covers category %s", category)
+		}
+	}
+
+	// The sweep must include characters that unicode.IsDigit rejects, otherwise
+	// it would also pass against the defective predicate.
+	rejected := 0
+	for _, sample := range numericSamples {
+		if sample.category != "Nd" && !unicode.IsDigit(sample.r) {
+			rejected++
+		}
+	}
+	if rejected == 0 {
+		t.Fatal("the sweep contains no non-IsDigit sample")
+	}
+}
+
+// TestASCIIDigitClassificationIsUnchanged guards the boundary between the
+// identifier continuation class and numeric literals: widening continuation to
+// \p{N} must not widen the ASCII-only numeric-literal prefix.
+func TestASCIIDigitClassificationIsUnchanged(t *testing.T) {
+	t.Parallel()
+
+	for _, r := range []rune{'\u00B2', '\u216B', '\u0663', '\u00BE'} {
+		if isDigit(r) {
+			t.Errorf("isDigit(%q) = true; number literals stay ASCII-only", r)
+		}
+		if !isIdentContinue(r) {
+			t.Errorf("isIdentContinue(%q) = false, want true", r)
+		}
+	}
+
+	// digitStart must not fire on a Unicode number, so such input is never
+	// routed into the (unimplemented) numeric family.
+	for _, r := range []rune{'\u00B2', '\u216B', '\u0663'} {
+		l := New("test.atrn", []byte(string(r)))
+		if l.digitStart() {
+			t.Errorf("digitStart() = true at %q, want false", r)
+		}
+		if l.identStart() {
+			t.Errorf("identStart() = true at %q, want false", r)
 		}
 	}
 }

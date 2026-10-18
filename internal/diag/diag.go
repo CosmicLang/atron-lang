@@ -77,8 +77,16 @@ type Diagnostic struct {
 //
 // The file name and both positions are explicit parameters, so construction
 // depends on nothing but its arguments: no environment variable, terminal
-// capability, clock or filesystem is consulted. Label and Help start empty and
-// can be set by the caller or through WithLabel and WithHelp.
+// capability, clock or filesystem is consulted. Label and Help are left empty
+// here; callers that want them assign to the exported fields directly, for
+// example
+//
+//	d := diag.New(diag.E0103, diag.Error, "main.atrn", pos, end, "unexpected character")
+//	d.Label = "not valid here"
+//	d.Help = "did you mean ':='?"
+//
+// There are deliberately no builder helpers: the fields are exported, so a
+// setter would add no capability.
 func New(code string, sev Severity, file string, pos, end token.Pos, msg string) Diagnostic {
 	return Diagnostic{
 		Code:     code,
@@ -99,9 +107,10 @@ func Errorf(code, file string, pos, end token.Pos, format string, args ...any) D
 	return New(code, Error, file, pos, end, fmt.Sprintf(format, args...))
 }
 
-// WithLabel and WithHelp are intentionally not provided: the eight contract
-// fields are exported and can be set directly, so no copy-on-write helpers are
-// needed, and fewer methods keep the M1 diagnostic model minimal.
+// Label and Help are set by assigning to the exported fields (see New), not
+// through builder methods: the eight contract fields are all exported, so
+// copy-on-write helpers would add no capability and more API surface than M1
+// authorises.
 
 // Error implements the error interface so a diagnostic can be returned
 // directly. The rendering is deterministic and stable: it is

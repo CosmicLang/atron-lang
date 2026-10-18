@@ -20,18 +20,28 @@ func isIdentStart(r rune) bool {
 
 // isIdentContinue reports whether r may continue an identifier.
 //
-// Only Unicode letters, Unicode digits and the underscore qualify. Marks,
-// punctuation, symbols and emoji do not, so a combining mark after a base
-// letter ends the token and is then reported as E0101 by the caller.
+// The ratified continuation class is \p{N} — the whole Unicode number
+// category, which spans Nd (decimal digits), Nl (letter-like numbers such as
+// the Roman numerals) and No (other numbers such as superscripts and vulgar
+// fractions). unicode.IsNumber is the predicate for that category;
+// unicode.IsDigit would accept only Nd and would therefore split `valor²` and
+// `itemⅫ` into an identifier plus a stray rune (lexical.md §5).
+//
+// Marks, punctuation, symbols and emoji are not in \p{N}, so a combining mark
+// after a base letter ends the token and is then reported as invalid by the
+// caller.
 func isIdentContinue(r rune) bool {
-	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
+	return r == '_' || unicode.IsLetter(r) || unicode.IsNumber(r)
 }
 
 // isDigit reports whether r is an ASCII decimal digit.
 //
-// Number literals are ASCII-only. W2 does not scan numbers, so this predicate
-// and digitStart exist as the cursor-level classification the numeric work
-// package will build on; they are exercised by the in-package cursor tests.
+// Number literals are ASCII-only, so this predicate is deliberately narrower
+// than the identifier continuation class: '²' and 'Ⅻ' continue an identifier
+// because they are in \p{N}, but they never begin a number literal. W2 does not
+// scan numbers, so this predicate and digitStart exist as the cursor-level
+// classification the numeric work package will build on; they are exercised by
+// the in-package cursor tests.
 func isDigit(r rune) bool { return r >= '0' && r <= '9' }
 
 // scanIdentifier consumes an identifier starting at the cursor and returns it.
