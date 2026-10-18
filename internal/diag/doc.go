@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// Package diag defines the Atron diagnostic model and its renderer.
+// Package diag defines the Atron diagnostic model.
 //
-// It will provide the Diagnostic type, severities, the source-snippet renderer
-// with optional ANSI colours, and the localisable message catalogue described in
-// chapter 5.8 of the Atron Master Implementation Guide. Codes follow Appendix D.
+// It provides the severity enumeration, the eight-field Diagnostic value, a
+// deterministic constructor and the stable lexical codes E0101–E0105, as
+// ratified in docs/spec/lexical.md §10. Diagnostics are plain values with
+// exported fields: they can be inspected, compared and formatted in tests
+// without touching a terminal, an environment variable, the clock or the
+// filesystem.
 //
-// Status: scaffolding only. The contents are implemented from milestone M1
-// (lexical codes) and completed in M6; this package intentionally declares no
-// behaviour yet.
+// The package depends on internal/token for source positions. The dependency is
+// one-way: internal/token never imports this package, so no cycle exists and a
+// Token stays printable without the diagnostic model.
+//
+// Status: M1 work packages W0–W2. Severity, Diagnostic, New, Errorf and the
+// lexical codes are implemented and tested. Rendering, ANSI colour,
+// localisation, message catalogues, source snippets and the ATRON_LANG and
+// NO_COLOR behaviour belong to M6 and are deliberately absent.
 package diag
