@@ -58,9 +58,11 @@ The following rules are ratified with it:
    (`cannot assign to immutable binding 'x'`). Re-declaration in the same scope
    remains **E0302**; use before declaration remains **E0301**.
 5. The lexical scope, shadowing, capture and hoisting rules are **unchanged**
-   from the guide. `const` and `var` are both non-hoisted: a name becomes visible
-   at its declaration, and use before it is E0301. Only `fn`, `struct` and
-   `impl` are visible throughout their scope.
+   from the guide §4.3. `const` and `var` are both **not hoisted**: a name becomes
+   visible at its declaration, and use before it is E0301. The guide's hoisting
+   rule names exactly two declaration kinds — `fn` and `struct` — and this ADR
+   adds nothing to it, because renaming the immutable keyword does not change
+   which declarations are hoisted.
 6. `let` is **removed from the keyword table** and lexes as an ordinary
    identifier (`Ident`). A legacy `let name = 1` is therefore not a declaration
    at all: the parser reports **E0201** (`expected statement`) with a migration
@@ -83,6 +85,17 @@ type VarDecl struct {
 ```
 
 The parser enforces the `const` initializer requirement when it builds this
+node; the resolver and later stages read only `Mutable`. Nothing downstream
+needs to know which keyword produced the node, so the two spellings cannot
+diverge in how they are scoped, captured or reported.
+
+`impl` is deliberately **not** in the hoisting rule above, and this ADR does not
+add it. The guide hoists `fn` and `struct` and says nothing about `impl`; whether
+an `impl` block must be visible before its textual position, and how method
+registration interacts with declaration order, is a **separate open design
+question**. It is recorded as a future issue rather than settled here by
+implication, because adding a third hoisted kind would be a language change in
+its own right and does not follow from renaming `let` to `const`.
 
 ## Alternatives considered
 
@@ -173,5 +186,3 @@ process, and no such process is claimed retrospectively. The public record in
 issue #3 was opened *after* the decision, so that the change is auditable and
 can be objected to. A substantive objection is answered by a superseding ADR,
 not by editing this one to look as though it was never made.
-
-node; the resolver and later stages read only `Mutable`.

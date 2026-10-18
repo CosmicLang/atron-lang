@@ -43,8 +43,30 @@ Rules:
 
 - Each of the three counts as **exactly one** logical line break. A standalone
   CR is **not** an illegal character merely because it is unpaired.
-- `\r` never appears inside a token's lexeme as a result of normalisation; the
-  raw bytes remain in the source and offsets stay faithful to them.
+- Normalisation is **logical only**. It changes `Line`/`Col` bookkeeping; it
+  never rewrites, deletes or substitutes a byte of the source. A CR byte stays
+  in the source buffer and a CRLF stays two bytes, so every offset remains a
+  true index into `src`.
+- Because offsets stay byte-faithful, the lexeme invariant of §9 holds without
+  exception for every **real, source-backed** token:
+
+  ```
+  Token.Lexeme == string(src[Pos.Offset:End.Offset])
+  ```
+
+  The only token this does not apply to is the synthetic `Newline` inserted by
+  ASI (§7), which has empty `Lexeme` and no source span of its own.
+- CR bytes therefore **can** appear inside a token's lexeme, and must. A
+  multiline raw string (§8.4) that contains CRLF or standalone CR returns those
+  actual bytes in its `Lexeme` and spans them with `Pos`/`End`, because the
+  invariant above is checked by golden tests and by `src[Pos.Offset:End.Offset]`
+  equality. Nothing in the lexer strips or rewrites them.
+- Collected comments (§6) likewise preserve their **original source text**
+  byte-for-byte, including any CR or CRLF inside a block comment, so that the
+  formatter can reprint them exactly.
+- A CR in a token lexeme is never rendered as a literal carriage return in a
+  diagnostic message; escaping is a rendering concern (M6), never a change to
+  the stored lexeme.
 - **Columns count Unicode code points (runes), not bytes**, and start at 1.
   Lines start at 1. A tab advances the column by one, like any other code point;
   tab stops are a display concern, not a lexical one.
@@ -166,8 +188,19 @@ Consequently:
 
 ### 7.1 A block-opening `{` on its own line
 
-The lexer always emits the `Newline` after a header such as `fn main()`. Whether
-that `Newline` may be skipped is a **parser** decision, ratified as follows:
+The lexer's rule is purely local and depends on the previous token kind only. A
+`Newline` is emitted when an **actual** qualifying logical line break follows a
+token that can end a statement:
+
+- `fn main() {` — `)` is followed on the **same** line by `{`, so there is no
+  qualifying line break and **no** `Newline` is emitted.
+- `fn main()` followed by a line break and then `{` — the break is real, so
+  exactly one `Newline` is emitted.
+- `fn main(); {` — `;` is emitted, there is no line break before `{`, and no
+  `Newline` is emitted.
+
+Whether the emitted `Newline` may be skipped is a **parser** decision, ratified
+as follows:
 
 - The parser **may** consume exactly one `Newline` token when the next required
   token is a block-opening `{`, in a recognised syntactic header context: a
@@ -213,8 +246,7 @@ Accepted: `42`, `1_000_000`, `0xFF`, `0b1010`, `0o755`. The value type is
   `_1` is an `Ident`.
 - There is **no** sign in the literal; `-` is always a prefix operator. Hence
   `-9223372036854775808` is unary minus applied to a literal that is itself out
-of
-  range, and that is a documented consequence, not a special case to fix.
+  of range, and that is a documented consequence, not a special case to fix.
 - Overflow of the literal's value is **E0103**.
 - A decimal integer immediately followed by `.` and a digit is a float (§8.2),
   not an `Int` followed by a `Dot`.
@@ -223,14 +255,12 @@ of
 
 Accepted: `3.14`, `1e-3`, `2.5E10`, `1_000.5`. A **digit is required before and
 after** the decimal point, so `.5` and `5.` are not float literals; a leading
-`.`
-is E0103.
+`.` is E0103.
 
 - Value semantics are **IEEE-754 binary64**.
 - A well-formed literal whose value **overflows to ±Infinity**, or whose
-rounding
-  **underflows** to zero, is **accepted**. Magnitude alone is never a lexical
-  error.
+  rounding **underflows** to zero, is **accepted**. Magnitude alone is never a
+  lexical error.
 - A malformed spelling — `1e`, `1e+`, a bare `.`, a misplaced `_` — is
   **E0103**.
 
@@ -245,8 +275,7 @@ Delimited by `"`. The lexer only delimits the literal and returns the raw text;
   brace depth, and nested strings inside an interpolation are scanned
   recursively, so `"a {f("b")} c"` is a single token. The closing `"` ends the
   literal only at depth 0.
-- An **unterminated** ordinary string — one that reaches a logical line break,
-or
+- An **unterminated** ordinary string — one that reaches a logical line break, or
   end of file, before the closing `"` at depth 0 — is **E0102**. Ordinary
   strings do not span lines.
 - Interpolation boundaries stay inside the token's raw text. Producing the inner
@@ -258,6 +287,13 @@ or
 Delimited by backticks; **multiline, with no escapes and no interpolation**. The
 token ends at the next backtick, and reaching end of file first is **E0102**.
 Because there are no escapes, a backtick cannot appear inside a raw string.
+
+Because this is the only literal that spans lines, it is where the §2 byte
+invariant is most visible: a multiline raw string containing CRLF returns
+exactly those two bytes per line, a raw string containing lone CR returns the one
+CR byte, and `End.Offset - Pos.Offset` equals `len(Lexeme)` in every case. The
+logical line count still advances once per break; only the *bookkeeping* is
+normalised, never the bytes.
 
 ## 9. Source positions
 
@@ -277,16 +313,22 @@ type Token struct {
 ```
 
 - `End` is exclusive: it is the position of the byte after the token's last
-  byte, which makes `src[Pos.Offset:End.Offset]` exactly the lexeme.
+  byte, which makes `src[Pos.Offset:End.Offset]` exactly the lexeme. This is the
+  normative invariant of §2:
+
+  ```
+  Token.Lexeme == string(src[Pos.Offset:End.Offset])
+  ```
 - `Lexeme` is the **raw** text, before any `_` removal or escape decoding. A
-  golden test compares it, so it must be byte-faithful.
+  golden test compares it, so it must be **byte-faithful** — including any CR,
+  CRLF or non-ASCII byte the source contains. It is never normalised.
 - For a synthetic `Newline` inserted by ASI (§7), `Pos` and `End` are both the
-  position where the line break occurs and `Lexeme` is empty. A consumer that
-  needs to know whether a `Newline` was explicit must therefore consult the
-  source, not the token.
+  position where the line break occurs and `Lexeme` is empty. This is the **only**
+  token excluded from the invariant above, because it has no source span of its
+  own. A consumer that needs to know whether a `Newline` was explicit must
+  therefore consult the source, not the token.
 - CRLF increments `Line` once while `Offset` advances by two (§2), so the
-column
-  of the first token on the next line is 1 in both LF and CRLF files.
+  column of the first token on the next line is 1 in both LF and CRLF files.
 
 ## 10. Lexical diagnostics
 
@@ -305,15 +347,13 @@ localisation, colour and the message catalogue are M6.
 Behaviour on a diagnostic:
 
 - The lexer **never fails**: `Next()` always returns a token. On an
-unrecoverable
-  character it emits `Illegal` with lexeme equal to the offending code point,
-  records the diagnostic, and **continues at the next character**. Recovery must
-  make progress, so a malformed token is never retried.
+  unrecoverable character it emits `Illegal` with lexeme equal to the offending
+  code point, records the diagnostic, and **continues at the next character**.
+  Recovery must make progress, so a malformed token is never retried.
 - Diagnostics are accumulated in source order and are not deduplicated; two
   identical errors at different positions are two diagnostics.
 - A BOM after the start, or a `\r` that is not part of a line ending, is not
-  special-cased into a diagnostic: CR is a line ending (§2), and an interior
-BOM
+  special-cased into a diagnostic: CR is a line ending (§2), and an interior BOM
   is E0101 like any other invalid character.
 
 
@@ -370,9 +410,11 @@ The lexer is conformant when, at minimum, all of these hold:
 | 5 | A lone `\r` produces no E0101. |
 | 6 | A shebang line and a leading BOM are skipped; an interior BOM is E0101. |
 | 7 | ASI fires on exactly the §7 set and collapses consecutive `Newline`s, emitting one before `EOF` when required. |
-| 8 | A `Newline` is **not** suppressed when the next token is `{`; the parser-side skip is tested in M2, not here. |
+| 8 | A `Newline` is **not** suppressed when a real line break precedes `{`, and is **not** emitted when `{` follows on the same line; the parser-side skip is tested in M2, not here. |
 | 9 | `.5` is E0103; `1e400` is a valid `Float` evaluating to +Infinity; `1_000_000` and `0xFFFF` are `Int`; `1_` is E0103. |
 | 10 | `"a {f("b")} c"` is a single `String`; an unterminated `"` is E0102; a backticked raw string is `RawString`, and a multiline raw string is accepted. |
+| 11 | For every real token, `Lexeme == string(src[Pos.Offset:End.Offset])`, including a multiline raw string written with CRLF and one containing a lone CR. The synthetic `Newline` is the only exception and has an empty lexeme. |
+| 12 | Collected comments preserve their original source bytes exactly, including CR and CRLF inside a block comment. |
 | 11 | `/* /* */` closes at the first `*/`; an unterminated `/*` is E0104. |
 | 12 | Every comment is returned by `Comments()`; none is dropped. |
 | 13 | `Next()` never panics and always makes progress on arbitrary bytes; `FuzzLexer` asserts this. |

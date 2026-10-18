@@ -12,10 +12,14 @@ single grammar, contextual validation).
 No parser, AST or semantic analyzer exists. This document describes the syntax
 that M2 must implement, and nothing more.
 
-## 1. Declarations and the declaration node
+## 1. The complete grammar
 
-`const` replaces `let` in the baseline grammar. The full set of declaration
-alternatives is:
+`const` replaces `let` in the baseline grammar, and one grammar serves every
+file (ADR-0005). What follows is the **complete** M2 grammar, transcribed from
+§4.11 of the guide with exactly those two changes and no other. No production is
+abridged, and no production is invented.
+
+Declarations:
 
 ```ebnf
 program        = { declaration } EOF ;
@@ -33,10 +37,74 @@ field_list     = IDENT { ( "," | NEWLINE ) IDENT } [ "," ] ;
 impl_decl      = "impl" IDENT "{" { fn_decl } "}" ;
 ```
 
-The two deviations from §4.11 are that `var_decl` uses `const` where the guide
-uses `let`, and that nothing else in the production changes.
+Statements and blocks:
 
-Rules:
+```ebnf
+statement      = if_stmt | while_stmt | for_stmt | return_stmt | break_stmt
+               | continue_stmt | block | assign_stmt | expr_stmt ;
+block          = "{" { declaration } "}" ;
+if_stmt        = "if" expression block [ "else" ( if_stmt | block ) ] ;
+while_stmt     = "while" expression block ;
+for_stmt       = "for" IDENT [ "," IDENT ] "in" expression block ;
+return_stmt    = "return" [ expression ] terminator ;
+break_stmt     = "break" terminator ;
+continue_stmt  = "continue" terminator ;
+assign_stmt    = target assign_op expression terminator ;
+assign_op      = "=" | "+=" | "-=" | "*=" | "/=" | "%=" ;
+target         = IDENT | postfix "." IDENT | postfix "[" expression "]" ;
+expr_stmt      = expression terminator ;
+```
+
+Expressions. The production chain **is** the precedence hierarchy of §4.4: each
+nonterminal calls the next-higher level, so the eleven levels of §2 are encoded
+here rather than restated (`not` sits below `equality`, `-` sits above `*` and
+`/` and below `**`):
+
+```ebnf
+expression     = or_expr ;
+or_expr        = and_expr { "or" and_expr } ;
+and_expr       = not_expr { "and" not_expr } ;
+not_expr       = "not" not_expr | equality ;
+equality       = comparison [ ( "==" | "!=" ) comparison ] ;
+comparison     = range [ ( "<" | "<=" | ">" | ">=" ) range ] ;
+range          = additive [ ( ".." | "..=" ) additive ] ;
+additive       = multiplicative { ( "+" | "-" ) multiplicative } ;
+multiplicative = unary { ( "*" | "/" | "%" ) unary } ;
+unary          = "-" unary | power ;
+power          = postfix [ "**" unary ] ;
+postfix        = primary { "(" [ args ] ")" | "[" expression "]" | "." IDENT | "?" } ;
+args           = expression { "," expression } [ "," ] ;
+```
+
+Primary expressions, collection literals, struct literals and function literals:
+
+```ebnf
+primary        = INT | FLOAT | STRING | RAWSTRING | "true" | "false" | "nil" | IDENT
+               | "(" expression ")" | list_lit | map_lit | struct_lit | fn_lit ;
+list_lit       = "[" [ args ] "]" ;
+map_lit        = "{" [ entry { "," entry } [ "," ] ] "}" ;
+entry          = ( IDENT | STRING | "[" expression "]" ) ":" expression ;
+struct_lit     = IDENT "{" [ init { "," init } [ "," ] ] "}" ;   (* not in headers *)
+init           = IDENT ":" expression ;
+fn_lit         = "fn" "(" [ params ] ")" ( block | "=>" expression ) ;
+```
+
+Three notes that the guide attaches to this grammar, preserved here:
+
+- Inside a `STRING`, `{ expression }` is analysed recursively and `\{` produces
+  a literal `{`. The lexer returns the raw text and the parser splits it out
+  (`lexical.md` §8.3).
+- A `{` at the start of a statement opens a block; in expression position it
+  opens a map literal.
+- A `Newline` immediately before the `}` of a literal — or before `)` or `]` —
+  is ignored, per the terminator rules in §2.
+
+**Every production above is parser-level and context-free.** Nothing in it
+mentions `main`, executable roots or libraries; those are contextual validation
+rules and appear only in §3.2 and §4, so that the grammar describes one language
+and the context rules describe one use of it.
+
+Rules for `const` and `var`:
 
 - `const` **requires** `= expression`. `const name` with no initializer is a
   parse error at the declaration, reported as **E0201** with a hint that `const`
@@ -65,23 +133,48 @@ Rules:
   an expression-bodied `main` is not an entry point belongs to the contextual
   layer (§4), **not** to the parser.
 
-## 2. Statements, precedence and terminators
+## 2. Precedence, associativity and terminators
 
-The statement, block and expression grammar is unchanged from the guide:
+The statement and block productions are in §1. Precedence and associativity are
+**exactly** those of guide §4.4, from lowest binding level (1) to highest (11):
 
-```ebnf
-statement      = if_stmt | while_stmt | for_stmt | return_stmt | break_stmt
-               | continue_stmt | block | assign_stmt | expr_stmt ;
-block          = "{" { declaration } "}" ;
-if_stmt        = "if" expression block [ "else" ( if_stmt | block ) ] ;
-while_stmt     = "while" expression block ;
-for_stmt       = "for" IDENT [ "," IDENT ] "in" expression block ;
-```
+| Level | Operators | Associativity | Note |
+|---|---|---|---|
+| 1 | `or` | left | lowest binding |
+| 2 | `and` | left | |
+| 3 | prefix `not` | right | `not a == b` ≡ `not (a == b)` |
+| 4 | `==`, `!=` | **non-associative** | `a == b == c` is a syntax error (E0201) |
+| 5 | `<`, `<=`, `>`, `>=` | **non-associative** | |
+| 6 | `..`, `..=` | **non-associative** | `0..n+1` ≡ `0..(n+1)` |
+| 7 | `+`, binary `-` | left | |
+| 8 | `*`, `/`, `%` | left | |
+| 9 | prefix `-` | right | `-2 ** 2` ≡ `-(2 ** 2)` = `-4` |
+| 10 | `**` | right | `2 ** 3 ** 2` ≡ `2 ** (3 ** 2)`; `2 ** -1` is valid |
+| 11 | call `f()`, index `a[i]`, field `a.b`, postfix `?` | left (postfix) | highest binding |
 
-Precedence and associativity are as ratified in the guide: `or`, then `and`,
-then equality, then comparison, then `..`/`..=`, then `+ -`, then `* / %`, then
-the right-associative `**`, then prefix `-`/`not`, then postfix `( [ . ?`.
-There is no `!`, `&&` or `||`; the keywords are `not`, `and`, `or`.
+Two consequences are called out because they are the cases an implementation is
+most likely to get wrong, and both are asserted by the conformance corpus:
+
+- **`not` binds looser than every comparison.** Level 3 sits *below* levels 4–10,
+  so `not a == b` parses as `not (a == b)`, never as `(not a) == b`. `not` is a
+  prefix operator of its own level, not part of a shared "unary" level.
+- **Prefix `-` binds tighter than `*`, `/`, `%` but looser than `**`.** Level 9
+  sits above level 8 and below level 10, so `-2 ** 2` parses as `-(2 ** 2)` and
+  evaluates to `-4`, while `-a * b` parses as `(-a) * b`. The two prefix
+  operators are therefore at **different** binding powers and must not be
+  collapsed into one `unary` level in the prose or in a precedence-climbing
+  implementation. The EBNF in §1 encodes this correctly: `unary = "-" unary |
+  power` sits between `multiplicative` and `power`, while `not_expr` sits between
+  `and_expr` and `equality`.
+
+Non-associativity is a **parse error**, not a silent left-fold: `a == b == c`,
+`a < b < c` and `a..b..c` are each E0201, because the level 4, 5 and 6
+productions admit at most one operator and do not recurse.
+
+Assignment is a statement, never an expression: `a = b = 1` and `if (x = 1)` are
+syntax errors. Valid targets are an identifier, `obj.field` and `obj[index]`.
+
+There is no `!`, `&&` or `||`; the operators are the keywords `not`, `and`, `or`.
 
 Terminator handling, restated because two of the M1 corrections touched it:
 
@@ -92,7 +185,9 @@ Terminator handling, restated because two of the M1 corrections touched it:
   `fn main(); {` is invalid, because only a single `Newline` may separate a
   header from its block (§3.1).
 - `else` may follow a `}` on the same line or after a single `Newline`; the
-
+  parser consumes that `Newline` only when the next token is `else`. This is the
+  one other closed point at which a `Newline` is skippable, and it is listed in
+  the §3.1 table so that both skips live in one place.
 ## 3. Block layout, one grammar, and contextual validation
 
 ### 3.1 A block-opening `{` on its own line
@@ -112,22 +207,35 @@ fn main()
 }
 ```
 
-The lexer emits a `Newline` after `)` in both cases and never suppresses one
-because `{` follows (`lexical.md` §7). The **parser** may consume exactly one
-`Newline` immediately before a required block-opening `{`, and only in a
-recognised header context. That list is **closed**:
+The lexer's rule is purely local: a `Newline` is emitted when an actual
+qualifying logical line break follows a token that can end a statement
+(`lexical.md` §7). In the first form there is **no** line break after `)` — the
+`{` follows on the same line — so **no** `Newline` is emitted there. In the
+second form the line break does follow `)`, so exactly one `Newline` is
+emitted. The lexer never suppresses a `Newline` because `{` happens to follow,
+and it never invents one that the source does not contain.
 
-| Header | May skip one `Newline` before `{` |
-|---|---|
-| `fn` declaration header | yes |
-| `if` header | yes |
-| `else` | yes |
-| `while` header | yes |
-| `for` header | yes |
-| `impl` header | yes |
-| `struct` header | **no** — a struct body is not a block |
-| a map or struct **literal** | **no** — literal braces are expression context |
-| any statement inside a block | **no** — `Newline` is a terminator there |
+The **parser** may consume exactly one `Newline` immediately before a required
+block-opening `{`, and only in a recognised header context. That list is
+**closed**:
+
+| Header | May skip one `Newline` before `{` | May skip one `Newline` before `else` |
+|---|---|---|
+| `fn` declaration header | yes | — |
+| `if` header | yes | — |
+| `else` | yes | — |
+| `while` header | yes | — |
+| `for` header | yes | — |
+| `impl` header | yes | — |
+| `struct` header | **no** — a struct body is not a block | — |
+| a map or struct **literal** | **no** — literal braces are expression context | — |
+| any statement inside a block | **no** — `Newline` is a terminator there | — |
+| `else` after a completed `if` block | — | yes — the second permitted skip |
+
+The two skips are the **complete** set. The `else` skip is listed here rather
+than in a separate section so that no third `Newline` exemption can be added
+elsewhere without contradicting this table; it is also the only exemption that
+follows a statement or block instead of preceding a required `{`.
 
 The skip is **exactly one** token, and only when the next token is `{`. It never
 consumes `;`, never consumes two `Newline`s, and never consumes anything when a
@@ -317,15 +425,78 @@ fn main() {
 
 ### 5.7 Forms that are **not** entry points
 
-```atron
-// Rejected by executable-context validation with E0310 — NOT by the parser:
-fn main(args) { println(args) }      // parameterized
-fn main() => println("x")            // expression-bodied
+Each of the following is a **complete, independent** source file. They are
+separate on purpose: putting two `fn main` declarations in one file would
+independently trigger **E0302** (duplicate declaration in one scope), which would
+contaminate an E0310 example and leave the reader unable to tell which rule
+fired.
 
-// Rejected by the parser with E0201 plus a migration hint:
-const ok = 1
-let legacy = 2                       // `let` is an identifier, not a keyword
+`e0310_parameterized.atrn` — valid syntax, invalid entry point:
+
+```atron
+fn main(args) {
+    println(args)
+}
 ```
+
+`e0310_expression_body.atrn` — valid syntax, invalid entry point:
+
+```atron
+fn main() => println("x")
+```
+
+`e0310_binding.atrn` — a binding named `main` is not an entry point:
+
+```atron
+const main = fn() {
+    println("x")
+}
+```
+
+`e0310_missing.atrn` — no entry point at all:
+
+```atron
+fn helper() {
+    return 1
+}
+```
+
+All four are **rejected by executable-context validation with E0310**, and only
+there. None of them is a parser error: the parser accepts every one of these
+files without a diagnostic.
+
+For contrast, a genuine **syntax** error — reported by the parser, not by
+entry-point validation — is E0201:
+
+```atron
+const ok = 1
+const broken =                        // E0201: expected expression after '='
+```
+
+Legacy `let` is also an E0201 syntax error, because `let` is an ordinary
+identifier rather than a keyword (ADR-0004):
+
+```atron
+let legacy = 2                        // E0201 with a `const` migration hint
+```
+
+And a **duplicate** declaration is E0302, a semantic error — deliberately shown
+alone here, and with no second `main` in any of the E0310 examples above:
+
+```atron
+fn main() {
+    println("first")
+}
+
+fn main() {
+    println("second")
+}
+```
+
+That last file is a duplicate-declaration error (**E0302**). It is *also* not a
+valid executable root, but E0302 is the correct primary diagnostic: the
+duplicate exists whether or not the file is executable, so it is reported by
+`sema`, before any entry-point validation runs.
 
 
 ## 6. Diagnostics referenced by this document
@@ -357,6 +528,11 @@ allocated to any other feature.
 | 8 | `Newline` is still a terminator inside a block and still ignored inside parentheses, brackets and literal braces. |
 | 9 | `ast.Print` produces S-expressions suitable for golden tests, one golden per §5 example. |
 | 10 | The parser terminates on arbitrary input and never panics (`FuzzParser`). |
+| 11 | `-2 ** 2` parses as `-(2 ** 2)` and evaluates to `-4`; `-a * b` parses as `(-a) * b`; `2 ** 3 ** 2` parses as `2 ** (3 ** 2)`; `2 ** -1` is accepted. |
+| 12 | `not a == b` parses as `not (a == b)`, and `not` never binds tighter than `==`. |
+| 13 | `a == b == c`, `a < b < c` and `a..b..c` are each E0201; non-associativity is an error, not a left-fold. |
+| 14 | `a = b = 1` and `if (x = 1)` are E0201; assignment never yields a value. |
+| 15 | Every E0310 example in §5.7 is accepted by the parser and rejected only by executable-context validation; the deliberate two-`main` file is E0302, not E0310. |
 
 ## 8. What this document does not claim
 
@@ -367,5 +543,3 @@ allocated to any other feature.
 - It does not define an `atron check` flag for executable-target validation.
 - It does not amend the original guide PDF, which is excluded from version
   control; it records the approved deviations in tracked, reviewable form.
-
-  parser consumes that `Newline` only when the next token is `else`.

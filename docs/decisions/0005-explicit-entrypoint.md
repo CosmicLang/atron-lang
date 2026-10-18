@@ -94,6 +94,10 @@ context, the semantic analyzer applies ordinary scope and duplicate rules
 without assuming executability, and a **separate contextual program-validation
 layer** decides whether the module is being used as an executable root. That
 layer is called by the CLI driver at M4 and reused by the module loader at M7;
+it lives outside `internal/parser` and `internal/sema`. Keeping it out of both
+packages is what makes the REPL, the test runner, `Eval` and the inspection
+commands work on a module with no `main` by construction, rather than by flags
+threaded through the parser or a mode switch in the analyzer.
 
 ### Execution and initialization contract
 
@@ -140,8 +144,6 @@ the entry point, run it. M4 does **not** gain an import resolver or a module
 cache, and must not acquire an M7 dependency. Full import resolution, caching and
 library-module semantics land in M7. Until then, no claim is made that imports
 behave as described above.
-
-it lives outside `internal/parser` and `internal/sema`.
 
 ## Alternatives considered
 
